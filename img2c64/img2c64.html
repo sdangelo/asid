@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<!--
+
+img2c64 - converts images to C64 bitmaps and colormaps
+
+Copyright (C) 2022 Orastron srl unipersonale
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License.
+
+This progarm is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with A-SID.  If not, see <http://www.gnu.org/licenses/>.
+
+File author: Stefano D'Angelo
+
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Image to C64</title>
+    <style>
+canvas { border: 1px solid black }
+    </style>
+    <script>
+// from https://www.c64-wiki.com/wiki/Color
+var palette = [
+	{ r: 0, g: 0, b: 0 },		// black
+	{ r: 255, g: 255, b: 255 },	// white
+	{ r: 136, g: 0, b: 0 },		// red
+	{ r: 170, g: 255, b: 238 },	// cyan
+	{ r: 204, g: 68, b: 204 },	// violet / purple
+	{ r: 0, g: 204, b: 85 },	// green
+	{ r: 0, g: 0, b: 170 },		// blue
+	{ r: 238, g: 238, b: 119 },	// yellow
+	{ r: 221, g: 136, b: 85 },	// orange
+	{ r: 102, g: 68, b: 0 },	// brown
+	{ r: 255, g: 119, b: 119 },	// light red
+	{ r: 51, g: 51, b: 51 },	// dark grey / grey 1
+	{ r: 119, g: 119, b: 119 },	// grey 2
+	{ r: 170, g: 255, b: 102 },	// light green
+	{ r: 0, g: 136, b: 255 },	// light blue
+	{ r: 187, g: 187, b: 187 },	// light grey / grey 3
+];
+
+function closestColorIndex(r, g, b, palette) {
+	var dCur = 3 * 255 * 255;
+	var k = 0;
+	for (var j = 0; j < palette.length; j++) {
+		var dr = r - palette[j].r;
+		var dg = g - palette[j].g;
+		var db = b - palette[j].b;
+		var d = dr * dr + dg * dg + db * db;
+		if (d < dCur) {
+			dCur = d;
+			k = j;
+		}
+	}
+	return k;
+}
+
+function reduceToPalette(data) {
+	var bitmap = new Uint8Array(320 * 200);
+	for (var i = 0; i < 320 * 200; i ++) {
+		var r = data[4 * i];
+		var g = data[4 * i + 1];
+		var b = data[4 * i + 2];
+		bitmap[i] = closestColorIndex(r, g, b, palette);
+	}
+	return bitmap;
+}
+
+window.onload = function () {
+	var ctxInputHidden = document.getElementById("inputCanvasHidden").getContext("2d");
+	var ctxInput = document.getElementById("inputCanvas").getContext("2d");
+
+	document.getElementById("inputFile").onchange = function (e) {
+		var img = new Image();
+		img.onload = function () {
+			ctxInputHidden.drawImage(this, 0, 0, 320, 200);
+			ctxInput.imageSmoothingEnabled = false;
+			ctxInput.drawImage(this, 0, 0, 1280, 800);
+		};
+		img.onerror = function() {
+			alert("Couldn't load file as image");
+		};
+		img.src = URL.createObjectURL(this.files[0]);
+	};
+
+	var canvasReduceToPaletteHidden = document.getElementById("reduceToPaletteCanvasHidden");
+	var ctxReduceToPaletteHidden = canvasReduceToPaletteHidden.getContext("2d");
+	var ctxReduceToPalette = document.getElementById("reduceToPaletteCanvas").getContext("2d");
+
+	document.getElementById("reduceToPalette").onclick = function (e) {
+		var srcData = ctxInputHidden.getImageData(0, 0, 320, 200);
+		var destHiddenData = ctxReduceToPaletteHidden.createImageData(320, 200);
+
+		var bitmap = reduceToPalette(srcData.data);
+		for (var i = 0; i < 320 * 200; i++) {
+			var p = palette[bitmap[i]];
+			destHiddenData.data[4 * i] = p.r;
+			destHiddenData.data[4 * i + 1] = p.g;
+			destHiddenData.data[4 * i + 2] = p.b;
+			destHiddenData.data[4 * i + 3] = 255;
+		}
+
+		ctxReduceToPaletteHidden.putImageData(destHiddenData, 0, 0);
+		ctxReduceToPalette.imageSmoothingEnabled = false;
+		ctxReduceToPalette.drawImage(canvasReduceToPaletteHidden, 0, 0, 1280, 800);
+	};
+	
+	document.getElementById("reduceToPaletteDownload").onclick = function (e) {
+		var a = document.createElement("a");
+		a.download = "reduced.png";
+		a.href = canvasReduceToPaletteHidden.toDataURL();
+		a.click();
+	};
+	
+	var canvasFinalHidden = document.getElementById("finalCanvasHidden");
+	var ctxFinalHidden = canvasFinalHidden.getContext("2d");
+	var ctxFinal = document.getElementById("finalCanvas").getContext("2d");
+	var canvasBitmapHidden = document.getElementById("bitmapCanvasHidden");
+	var ctxBitmapHidden = canvasBitmapHidden.getContext("2d");
+	var ctxBitmap = document.getElementById("bitmapCanvas").getContext("2d");
+	var canvasColormapHidden = document.getElementById("colormapCanvasHidden");
+	var ctxColormapHidden = canvasColormapHidden.getContext("2d");
+	var ctxColormap = document.getElementById("colormapCanvas").getContext("2d");
+
+	function maxIndex(array) {
+		var r = 0;
+		var v = -Infinity;
+		for (var i = 0; i < array.length; i++)
+			if (array[i] > v) {
+				v = array[i];
+				r = i;
+			}
+		return r;
+	}
+
+	document.getElementById("separate").onclick = function (e) {
+		var srcData = ctxReduceToPaletteHidden.getImageData(0, 0, 320, 200);
+		var finalData = ctxFinalHidden.createImageData(320, 200);
+		var bitmapData = ctxBitmapHidden.createImageData(320, 200);
+		var colormapData = ctxColormapHidden.createImageData(320, 200);
+
+		var bitmap = reduceToPalette(srcData.data);
+		var background = new Array(320 / 8 * 200 / 8);
+		var foreground = new Array(320 / 8 * 200 / 8);
+
+		var count = new Array(16);
+		for (var i = 0; i < 320; i += 8) {
+			for (var j = 0; j < 200; j += 8) {
+				count.fill(0);
+
+				for (var y = 0; y < 8; y++)
+					for (var x = 0; x < 8; x++)
+						count[bitmap[320 * (j + y) + i + x]]++;
+
+				var c1 = maxIndex(count);
+				count[c1] = 0;
+				var c2 = count.reduce(function(s, a) { return s + a; }) == 0 ? c1 : maxIndex(count);
+
+				var idx8 = 320 / 64 * j + i / 8;
+				background[idx8] = c1;
+				foreground[idx8] = c2;
+
+				var p = [palette[c1], palette[c2]];
+				for (var y = 0; y < 8; y++)
+					for (var x = 0; x < 8; x++) {
+						var idx = 320 * (j + y) + i + x;
+						var c = palette[bitmap[idx]];
+						var k = closestColorIndex(c.r, c.g, c.b, p);
+						bitmap[idx] = k;
+					}
+			}
+		}
+
+		for (var i = 0; i < 320; i++) {
+			for (var j = 0; j < 200; j++) {
+				var idx = 320 * j + i;
+				var bp = palette[1 - bitmap[idx]];
+				bitmapData.data[4 * idx] = bp.r;
+				bitmapData.data[4 * idx + 1] = bp.g;
+				bitmapData.data[4 * idx + 2] = bp.b;
+				bitmapData.data[4 * idx + 3] = 255;
+
+				var idx8 = 320 / 8 * Math.floor(j / 8) + Math.floor(i / 8);
+				var fp = palette[bitmap[idx] ? foreground[idx8] : background[idx8]];
+				finalData.data[4 * idx] = fp.r;
+				finalData.data[4 * idx + 1] = fp.g;
+				finalData.data[4 * idx + 2] = fp.b;
+				finalData.data[4 * idx + 3] = 255;
+			}
+		}
+
+		for (var i = 0; i < 320; i += 8) {
+			for (var j = 0; j < 200; j += 8) {
+				var idx8 = 320 / 8 * Math.floor(j / 8) + Math.floor(i / 8);
+				var f = palette[foreground[idx8]];
+				var b = palette[background[idx8]];
+				for (var x = 0; x < 8; x++) {
+					for (var y = 0; y < 4; y++) {
+						var idx = 320 * (j + y) + i + x;
+						colormapData.data[4 * idx] = f.r;
+						colormapData.data[4 * idx + 1] = f.g;
+						colormapData.data[4 * idx + 2] = f.b;
+						colormapData.data[4 * idx + 3] = 255;
+					}
+					for (var y = 4; y < 8; y++) {
+						var idx = 320 * (j + y) + i + x;
+						colormapData.data[4 * idx] = b.r;
+						colormapData.data[4 * idx + 1] = b.g;
+						colormapData.data[4 * idx + 2] = b.b;
+						colormapData.data[4 * idx + 3] = 255;
+					}
+				}
+			}
+		}
+
+		ctxFinalHidden.putImageData(finalData, 0, 0);
+		ctxFinal.imageSmoothingEnabled = false;
+		ctxFinal.drawImage(canvasFinalHidden, 0, 0, 1280, 800);
+		ctxBitmapHidden.putImageData(bitmapData, 0, 0);
+		ctxBitmap.imageSmoothingEnabled = false;
+		ctxBitmap.drawImage(canvasBitmapHidden, 0, 0, 1280, 800);
+		ctxColormapHidden.putImageData(colormapData, 0, 0);
+		ctxColormap.imageSmoothingEnabled = false;
+		ctxColormap.drawImage(canvasColormapHidden, 0, 0, 1280, 800);
+	};
+	
+	var hover = document.getElementById("hover");
+	
+	var bcmousemove = function (e) {
+		var rect = e.currentTarget.getBoundingClientRect();
+		var x = 32 * Math.floor((e.clientX - rect.left) / 32) + rect.left;
+		var y = 32 * Math.floor((e.clientY - rect.top) / 32) + rect.top;
+		hover.style.display = "block";
+		hover.style.left = x + window.pageXOffset + "px";
+		hover.style.top = y + window.pageYOffset + "px";
+	};
+	
+	var bcmouseenter = function (e) {
+		hover.style.display = "block";
+	};
+	
+	var bcmouseleave = function (e) {
+		hover.style.display = "none";
+	};
+	
+	var bcclick = function (e) {
+		var rect = e.currentTarget.getBoundingClientRect();
+		var x = Math.floor((e.clientX - rect.left) / 32);
+		var y = Math.floor((e.clientY - rect.top) / 32);
+		var bitmapData = ctxBitmapHidden.getImageData(0, 0, 320, 200);
+		var colormapData = ctxColormapHidden.getImageData(0, 0, 320, 200);
+		
+		for (var i = 8 * x; i < 8 * x + 8; i++) {
+			for (var j = 8 * y; j < 8 * y + 8; j++) {
+				var idx = 320 * j + i;
+				bitmapData.data[4 * idx] = 255 - bitmapData.data[4 * idx];
+				bitmapData.data[4 * idx + 1] = 255 - bitmapData.data[4 * idx + 1];
+				bitmapData.data[4 * idx + 2] = 255 - bitmapData.data[4 * idx + 2];
+			}
+		}
+		
+		for (var i = 8 * x; i < 8 * x + 8; i++) {
+			for (var j = 8 * y; j < 8 * y + 4; j++) {
+				var idx1 = 320 * j + i;
+				var idx2 = 320 * (j + 4) + i;
+				var tr = colormapData.data[4 * idx1];
+				var tg = colormapData.data[4 * idx1 + 1];
+				var tb = colormapData.data[4 * idx1 + 2];
+				colormapData.data[4 * idx1] = colormapData.data[4 * idx2];
+				colormapData.data[4 * idx1 + 1] = colormapData.data[4 * idx2 + 1];
+				colormapData.data[4 * idx1 + 2] = colormapData.data[4 * idx2 + 2];
+				colormapData.data[4 * idx2] = tr;
+				colormapData.data[4 * idx2 + 1] = tg;
+				colormapData.data[4 * idx2 + 2] = tb;
+			}
+		}
+		
+		ctxBitmapHidden.putImageData(bitmapData, 0, 0);
+		ctxBitmap.imageSmoothingEnabled = false;
+		ctxBitmap.drawImage(canvasBitmapHidden, 0, 0, 1280, 800);
+		ctxColormapHidden.putImageData(colormapData, 0, 0);
+		ctxColormap.imageSmoothingEnabled = false;
+		ctxColormap.drawImage(canvasColormapHidden, 0, 0, 1280, 800);
+	};
+	
+	document.getElementById("bitmapCanvas").onmousemove = bcmousemove;
+	document.getElementById("bitmapCanvas").onmouseenter = bcmouseenter;
+	document.getElementById("bitmapCanvas").onmouseleave = bcmouseleave;
+	document.getElementById("bitmapCanvas").onclick = bcclick;
+	
+	document.getElementById("colormapCanvas").onmousemove = bcmousemove;
+	document.getElementById("colormapCanvas").onmouseenter = bcmouseenter;
+	document.getElementById("colormapCanvas").onmouseleave = bcmouseleave;
+	document.getElementById("colormapCanvas").onclick = bcclick;
+	
+	document.getElementById("bitmapDownload").onclick = function (e) {
+		var a = document.createElement("a");
+		a.download = "bitmap.png";
+		a.href = canvasBitmapHidden.toDataURL();
+		a.click();
+	};
+	
+	document.getElementById("colormapDownload").onclick = function (e) {
+		var a = document.createElement("a");
+		a.download = "colormap.png";
+		a.href = canvasColormapHidden.toDataURL();
+		a.click();
+	};
+	
+	document.getElementById("bitmapDataDownload").onclick = function (e) {
+		var bitmapData = ctxBitmapHidden.getImageData(0, 0, 320, 200);
+		var b = bitmapData.data;
+		var data = new Uint8Array(8000);
+		var k = 0;
+		for (var j = 0; j < 200; j += 8) {
+			for (var i = 0; i < 320; i += 8) {
+				for (var y = 0; y < 8; y++) {
+					var idx = 320 * (j + y) + i;
+					data[k] =
+						(b[4 * idx] ? 0 : 0x80)
+						| (b[4 * idx + 4] ? 0 : 0x40)
+						| (b[4 * idx + 8] ? 0 : 0x20)
+						| (b[4 * idx + 12] ? 0 : 0x10)
+						| (b[4 * idx + 16] ? 0 : 0x8)
+						| (b[4 * idx + 20] ? 0 : 0x4)
+						| (b[4 * idx + 24] ? 0 : 0x2)
+						| (b[4 * idx + 28] ? 0 : 0x1);
+					k++;
+				}
+			}
+		}
+		var a = document.createElement("a");
+		a.download = "bitmap.dat";
+		a.href = "data:text/plain;base64," + btoa(String.fromCharCode.apply(null, data));
+		a.click();
+	};
+	
+	document.getElementById("colormapDataDownload").onclick = function (e) {
+		var colormapData = ctxColormapHidden.getImageData(0, 0, 320, 200);
+		var data = new Uint8Array(1000);
+		var k = 0;
+		for (var j = 0; j < 200; j += 8) {
+			for (var i = 0; i < 320; i += 8) {
+				var idx1 = 320 * j + i;
+				var idx2 = 320 * (j + 4) + i;
+				var f = closestColorIndex(colormapData.data[4 * idx1], colormapData.data[4 * idx1 + 1], colormapData.data[4 * idx1 + 2], palette);
+				var b = closestColorIndex(colormapData.data[4 * idx2], colormapData.data[4 * idx2 + 1], colormapData.data[4 * idx2 + 2], palette);
+				data[k] = (f << 4) | b;
+				k++;
+			}
+		}
+		var a = document.createElement("a");
+		a.download = "colormap.dat";
+		a.href = "data:text/plain;base64," + btoa(String.fromCharCode.apply(null, data));
+		a.click();
+	};
+	
+	document.getElementById("finalDownload").onclick = function (e) {
+		var a = document.createElement("a");
+		a.download = "final.png";
+		a.href = canvasFinalHidden.toDataURL();
+		a.click();
+	};
+};
+    </script>
+  </head>
+  <body>
+    <h1>Image to C64</h1>
+    <p>Converts a 320x200 image to C64 hi-res bitmap + colormap.</p>
+    <h2>Step #1: Choose image</h2>
+    <input id="inputFile" type="file" value="Choose image"><br>
+    <canvas id="inputCanvasHidden" width="320" height="200" style="display: none"></canvas>
+    <canvas id="inputCanvas" width="1280" height="800"></canvas>
+    <h2>Step #2: Choose palette</h2>
+    <p>Right now we're just using <a href="https://www.c64-wiki.com/wiki/Color">this one</a>.</p>
+    <h2>Step #3: Reduce colors to palette</h2>
+    <input id="reduceToPalette" type="button" value="Go"><br>
+    <canvas id="reduceToPaletteCanvasHidden" width="320" height="200" style="display: none"></canvas>
+    <canvas id="reduceToPaletteCanvas" width="1280" height="800"></canvas><br>
+    <input id="reduceToPaletteDownload" type="button" value="Download">
+    <h2>Step #4: Separate bitamp and colormap</h2>
+    <input id="separate" type="button" value="Go"><br>
+    <h3>Bitmap</h3>
+    <canvas id="bitmapCanvasHidden" width="320" height="200" style="display: none"></canvas>
+    <canvas id="bitmapCanvas" width="1280" height="800"></canvas>
+    <h3>Colormap</h3>
+    <canvas id="colormapCanvasHidden" width="320" height="200" style="display: none"></canvas>
+    <canvas id="colormapCanvas" width="1280" height="800"></canvas>
+    <h3>Final</h3>
+    <canvas id="finalCanvasHidden" width="320" height="200" style="display: none"></canvas>
+    <canvas id="finalCanvas" width="1280" height="800"></canvas><br>
+    <input id="bitmapDownload" type="button" value="Download bitmap as image">
+    <input id="colormapDownload" type="button" value="Download colormap as image">
+    <input id="bitmapDataDownload" type="button" value="Download bitmap as C64 data">
+    <input id="colormapDataDownload" type="button" value="Download colormap as C64 data">
+    <input id="finalDownload" type="button" value="Download final image">
+    <img id="hover" src="hover.png" style="position: absolute; z-index: 1; pointer-events: none">
+  </body>
+</html>
