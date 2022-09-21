@@ -120,10 +120,10 @@ void asid_process(asid instance, const float** x, float** y, int n_samples) {
 }
 
 void asid_set_parameter(asid instance, int index, float value) {
-	instance->params[index] = value;
+	if (index < 3)
+		instance->params[index] = value;
 }
 
-float asid_get_cutoff_modulated(asid instance)
-{
-	return instance->modulated_cutoff;
+float asid_get_parameter(asid instance, int index) {
+	return index == 3 ? instance->modulated_cutoff : instance->params[index];
 }

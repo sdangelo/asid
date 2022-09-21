@@ -39,12 +39,12 @@ g++ \
 	src/asid_gui.c \
 	src/gui-x.c \
 	\
-	-DDEVELOPMENT=1 \
+	-DRELEASE=1 \
 	-I../src \
 	-Isrc \
 	-I$VST_SDK_DIR/vst3sdk/ \
 	-fPIC -shared \
-	-ldl \
-	-rdynamic \
-	-o build/asid.vst3/Contents/x86_64-linux/asid.so
-# -DRELEASE=1
+	-static-libgcc \
+	-static-libstdc++ \
+	-o build/asid.vst3/Contents/x86_64-linux/asid.so \
+	-O3

@@ -40,7 +40,7 @@ public:
 	tresult PLUGIN_API setParamNormalized(ParamID tag, ParamValue value) SMTG_OVERRIDE;
 
 private:
-	PGUI_TYPE pgui;
+	PGUI_TYPE pgui = nullptr;
 };
 
 #endif

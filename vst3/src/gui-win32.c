@@ -14,83 +14,49 @@
  *
  * You should have received a copy of the GNU General Public License
  *
- * File author: Paolo Marrone
+ * File author: Paolo Marrone, Stefano D'Angelo
  */
 
-extern "C" {
-
-#include <stdio.h>
 #include <stdlib.h>
+#include <windows.h>
 
-#include "gui-win32.h"
-#include "asid_gui.h"
+#include "gui.h"
 
-static const char g_szClassName[] = "guiWindowClass";
-static char keep_running;
+typedef struct _window {
+	gui					 g;
+	struct _window		*next;
+	HWND 				 handle;
+	HBITMAP 			 bitmap;
+	BITMAPINFOHEADER	 bitmap_info;
+	uint8_t				*bgra;
+	char				 mouse_tracking;
+	void				*data;
+	gui_cb				 resize_cb;
+	gui_cb				 mouse_press_cb;
+	gui_cb				 mouse_release_cb;
+	gui_cb				 mouse_move_cb;
+} *window;
 
-static TRACKMOUSEEVENT tme = {0}; // Tmp
-static char m_bMouseTracking = 0; // Tmp
+typedef struct _gui {
+	char			 keep_running;
+} *gui;
 
-static window firstWindow;
-
-int instanceCounter = 0;
-
-struct _window {
-	window 			next;
-	HWND 			handle;
-	asid_gui 		gui;
-	unsigned char* 	argb;
-	HBITMAP 		map;
-	uint32_t 		width, height;
-};
-
-static window findWin(HWND handle) {
-	window winCur = firstWindow;
-	while (winCur) {
-		if (winCur->handle == handle)
-			return winCur;
-		winCur = winCur->next;
-	}
-	return NULL;
-}
-
-static void window_draw_ (HWND w, HBITMAP map, uint32_t srcX, uint32_t srcY, uint32_t destX, uint32_t destY, uint32_t width, uint32_t height) {
-	// Temp HDC to copy picture
-	HDC tmp = GetDC(NULL);
-	HDC src = CreateCompatibleDC(tmp); // hdc - Device context for window
-	SelectObject(src, map); // Inserting picture into our temp HDC
-	HDC dest = GetDC(w);
-	// Copy image from temp HDC to window
-	BitBlt(
-		dest, 			// Destination
-		(int) destX,	// x and
-		(int) destY,	// y - upper-left corner of place, where we'd like to copy
-		(int) width,	// width of the region
-		(int) height,
-		src, 			// source
-		(int) srcX, 	// x and
-		(int) srcY, 	// y of upper left corner of part of the source, from where we'd like to copy
-		SRCCOPY 		// Defined DWORD to juct copy pixels. Watch more on msdn;
-	);
-	ReleaseDC(w, dest);
-	DeleteDC(src); 		// Deleting temp HDC
-	DeleteDC(tmp);
-}
+static const char* class_name = "guiWindowClass";
+char gui_new_count = 0;
+window windows = NULL;
 
 static uint32_t get_mouse_state(WPARAM wParam) {
-	return 
-		(wParam & (MK_LBUTTON | MK_RBUTTON))
-		| ((wParam & MK_MBUTTON) >> 2);
+	return  (wParam & (MK_LBUTTON | MK_RBUTTON)) | ((wParam & MK_MBUTTON) >> 2);
 }
 
-
-static LRESULT CALLBACK WndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-	window w = findWin(hwnd);
+static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	window w = windows;
+	while (w && w->handle != hwnd)
+		w = w->next;
 	if (w == NULL)
-		return 1;
+		return DefWindowProc(hwnd, msg, wParam, lParam);
 
 	DWORD pos;
-	uint32_t wt, ht;
 	POINTS points;
     switch(msg)
     {
@@ -99,251 +65,228 @@ static LRESULT CALLBACK WndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
         case WM_RBUTTONDOWN:
         	points = MAKEPOINTS(lParam);
         	SetCapture(hwnd);
-			asid_on_mouse_press(w->gui, points.x, points.y);
-			//MessageBox(NULL, "Click", "Click!", MB_OK);
+			if (w->mouse_press_cb)
+					((void(*)(window, int32_t, int32_t))w->mouse_press_cb)(w, points.x, points.y);
 			break;
 		case WM_LBUTTONUP:
     	case WM_MBUTTONUP:
         case WM_RBUTTONUP:
-        	points = MAKEPOINTS(lParam);
-        	wt = get_mouse_state(wParam);
-        	if (wt == 0)
+			points = MAKEPOINTS(lParam);
+        	if (get_mouse_state(wParam) == 0)
         		ReleaseCapture();
-			asid_on_mouse_release(w->gui);
+			if (w->mouse_release_cb)
+					((void(*)(window, int32_t, int32_t))w->mouse_release_cb)(w, points.x, points.y);
 			break;
 		case WM_MOUSEMOVE:
-			if (!m_bMouseTracking)
+			if (!w->mouse_tracking)
 	        {
-	            // Enable mouse tracking.
+				TRACKMOUSEEVENT tme;
 	            tme.cbSize = sizeof(tme);
 	            tme.hwndTrack = hwnd;
 	            tme.dwFlags = TME_HOVER | TME_LEAVE;
 	            tme.dwHoverTime = HOVER_DEFAULT;
 	            TrackMouseEvent(&tme);
-	            m_bMouseTracking = 1;
+	            w->mouse_tracking = 1;
 	        }
-
         	points = MAKEPOINTS(lParam);
-			asid_on_mouse_move(w->gui, points.x, points.y, get_mouse_state(wParam));
+			if (w->mouse_move_cb)
+					((void(*)(window, int32_t, int32_t, uint32_t))w->mouse_move_cb)(w, points.x, points.y, get_mouse_state(wParam));
 			break;
 		case WM_MOUSELEAVE:
-        	points = MAKEPOINTS(lParam);
-		   	m_bMouseTracking = 0;
-			break;
-		case WM_KEYDOWN:
-			break;
-		case WM_KEYUP:
-			break;
-        case WM_CLOSE:
-            DestroyWindow(hwnd);
-			break;
-        case WM_DESTROY:
-            PostQuitMessage(0);
+		   	w->mouse_tracking = 0;
 			break;
 		case WM_SIZE:
-			wt = (uint32_t) LOWORD(lParam);
-			ht = (uint32_t) HIWORD(lParam);
-			if (wt > 0 && ht > 0) {
-				//w->width = wt;
-				//w->height = ht;
-				//on_window_resize(ww, wt, ht);
-			}
+		{
+			uint32_t width = LOWORD(lParam);
+			uint32_t height = HIWORD(lParam);
+			DeleteObject(w->bitmap);
+			w->bitmap_info.biWidth = width;
+			w->bitmap_info.biHeight = -height;
+			HDC dc = GetDC(w->handle);
+			w->bitmap = CreateDIBSection(dc, (BITMAPINFO*)&w->bitmap_info, DIB_RGB_COLORS, (void **)&w->bgra, NULL, 0);
+			ReleaseDC(w->handle, dc);
+			if (w->resize_cb)
+					((void(*)(window, uint32_t, uint32_t))w->resize_cb)(w, width, height);
+		}
 			break;
 		case WM_PAINT:
-			BeginPaint(hwnd, NULL);
-			if (w != NULL && w->map != NULL) {
-				window_draw_(hwnd, w->map, 0, 0, 0, 0, w->width, w->height);
+		{
+			RECT r;
+			if (GetUpdateRect(hwnd, &r, 0)) {
+				PAINTSTRUCT ps;
+				HDC dc = BeginPaint(hwnd, &ps);
+				SetDIBitsToDevice(dc, r.left, r.top, r.right - r.left, r.bottom - r.top, r.left, gui_window_get_height(w) - r.bottom, 0, -w->bitmap_info.biHeight, w->bgra, (BITMAPINFO*)&w->bitmap_info, DIB_RGB_COLORS);
+				EndPaint(hwnd, &ps);
 			}
-			EndPaint(hwnd, NULL);
-			break;
-        default:
-            return DefWindowProc(hwnd, msg, wParam, lParam);
-    }
-    return 0;
-}
-
-
-int32_t gui_init () {
-	instanceCounter++;
-	
-	WNDCLASSEX wc;
-
-	wc.cbSize        = sizeof(wc);
-    wc.style         = 0; // CS_HREDRAW | CS_VREDRAW; // redraw if size changes 
-    wc.lpfnWndProc   = WndProc;
-    wc.cbClsExtra    = 0;
-    wc.cbWndExtra    = 0;
-    wc.hInstance     = NULL;
-    wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
-    wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(WHITE_BRUSH);
-    wc.lpszMenuName  = NULL;
-    wc.lpszClassName = g_szClassName;
-    wc.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
-
-    ATOM wcATOM = RegisterClassEx(&wc);
-    if(!wcATOM) {
-    	// Probably it got already registered
-		return 1;
-    }
-
-    firstWindow = NULL;
-
-	return 0;
-}
-
-/*
-static uint32_t count_windows() {
-	uint32_t counter = 0;
-	if (firstWindow != NULL) {
-		counter++;
-		window winCur = firstWindow;
-		while (winCur->next != NULL) {
-			counter++;
-			winCur = winCur->next;
 		}
-	}
-	return counter;
-}
-*/
-
-void gui_fini () {
-	instanceCounter--;
-
-	if (instanceCounter <= 0) { // Concurrency problem?
-		instanceCounter = 0;
-		UnregisterClass(g_szClassName, NULL);
-	}
-}
-
-
-window gui_window_new (void* parent, uint32_t width, uint32_t height, asid_gui gui) {
-
-	HWND* hwndParent = (HWND*) parent;
-
-	HWND hwnd = CreateWindowEx(
-		WS_EX_CLIENTEDGE,
-		g_szClassName,
-		"ASID",
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, width, height,
-		NULL, NULL, NULL, NULL
-	);
-
-    if(hwnd == NULL)
-    {
-        MessageBox(NULL, "Window Creation Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
-        return NULL;
+			break;
     }
-
-	SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) & ! WS_BORDER & ! WS_SIZEBOX & ! WS_DLGFRAME );
-	SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-
-
-    tme.cbSize      = sizeof(TRACKMOUSEEVENT);
-    tme.dwFlags     = TME_LEAVE;
-    tme.hwndTrack   = hwnd;
-    TrackMouseEvent(&tme);
-
-    UpdateWindow(hwnd);
-  	SetParent(hwnd, *hwndParent);
-    
-
-	window newWindow = (window) malloc(sizeof(struct _window));
-	if (newWindow == NULL)
-		return NULL;
-	newWindow->next = NULL;
-	newWindow->handle = hwnd;
-	newWindow->width = width;
-	newWindow->height = height;
-	newWindow->argb = NULL; /*(unsigned char*) malloc(4 * newWindow->width * newWindow->height);
-	if (newWindow->argb == NULL) {
-		MessageBox(NULL, "Memory error", "Error!", MB_ICONEXCLAMATION | MB_OK);
-		return NULL;
-	}
-	*/
-	newWindow->map = NULL;
-	newWindow->gui = gui;
-
-	if (firstWindow == NULL)
-		firstWindow = newWindow;
-	else {
-		window winCur = firstWindow;
-		while (winCur->next != NULL)
-			winCur = winCur->next;
-		winCur->next = newWindow;
-	}
-
-    return newWindow;
-   
+    return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-void gui_window_free (window w) {
-	if (w == firstWindow)
-		firstWindow = w->next;
-	else {
-		window winCur = firstWindow;
-		while (winCur->next != w)
-			winCur = winCur->next;
-		winCur->next = w->next;
+gui gui_new() {
+	gui g = (gui)malloc(sizeof(struct _gui));
+	if (!g)
+		return NULL;
+	
+	if (!gui_new_count) {
+		WNDCLASSEX wc;
+		wc.cbSize        = sizeof(WNDCLASSEX);
+		wc.style         = 0;
+		wc.lpfnWndProc   = WndProc;
+		wc.cbClsExtra    = 0;
+		wc.cbWndExtra    = 0;
+		wc.hInstance     = NULL;
+		wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
+		wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+		wc.hbrBackground = (HBRUSH)(WHITE_BRUSH);
+		wc.lpszMenuName  = NULL;
+		wc.lpszClassName = class_name;
+		wc.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
+		RegisterClassEx(&wc);
 	}
+	gui_new_count++;
 
-	//free(w->argb);
-	DeleteObject(w->map);
+	return g;
+}
+
+void gui_free(gui g) {
+	free(g);
+	gui_new_count--;
+	if (!gui_new_count)
+		UnregisterClass(class_name, NULL);
+}
+
+void gui_run(gui g, char single) {
+	g->keep_running = 1;
+	MSG msg;
+	while (g->keep_running) {
+		if (single) {
+			BOOL b = PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
+			if (!b)
+				break;
+		} else {
+			BOOL b = GetMessage(&msg, NULL, 0, 0);
+			if (b <= 0)
+				break;
+		}
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+}
+
+void gui_stop(gui g) {
+	g->keep_running = 0;
+}
+
+window gui_window_new(gui g, void* parent, uint32_t width, uint32_t height) {
+	window w = (window)malloc(sizeof(struct _window));
+	if (w == NULL)
+		return NULL;
+
+	w->handle = CreateWindowEx(0, class_name, NULL, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, NULL, NULL, NULL, NULL);
+	if (w->handle == NULL) {
+		free(w);
+		return NULL;
+	}
+	
+	ZeroMemory(&w->bitmap_info, sizeof(BITMAPINFOHEADER));
+	w->bitmap_info.biSize = sizeof(BITMAPINFOHEADER);
+	w->bitmap_info.biWidth = width;
+	w->bitmap_info.biHeight = -height;
+	w->bitmap_info.biPlanes = 1;
+	w->bitmap_info.biBitCount = 32;
+	w->bitmap_info.biCompression = BI_RGB;
+	HDC dc = GetDC(w->handle);
+	w->bitmap = CreateDIBSection(dc, (BITMAPINFO*)&w->bitmap_info, DIB_RGB_COLORS, (void **)&w->bgra, NULL, 0);
+	ReleaseDC(w->handle, dc);
+	if (w->bitmap == NULL) {
+		DestroyWindow(w->handle);
+		free(w);
+		return NULL;
+	}
+	
+	if (parent) {
+		SetParent(w->handle, *((HWND *)parent));
+		SetWindowLong(w->handle, GWL_STYLE, GetWindowLong(w->handle, GWL_STYLE) & ! WS_BORDER & ! WS_SIZEBOX & ! WS_DLGFRAME );
+		SetWindowPos(w->handle, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+	}
+	
+	w->next = NULL;
+	if (windows == NULL)
+		windows = w;
+	else {
+		window n = windows;
+		while (n->next)
+			n = n->next;
+		n->next = w;
+	}
+	
+	TRACKMOUSEEVENT tme;
+	tme.cbSize = sizeof(TRACKMOUSEEVENT);
+	tme.dwFlags = TME_LEAVE;
+	tme.hwndTrack = w->handle;
+	TrackMouseEvent(&tme);
+	w->mouse_tracking = 1;
+
+	w->data = NULL;
+	w->resize_cb = NULL;
+	w->mouse_press_cb = NULL;
+	w->mouse_release_cb = NULL;
+	w->mouse_move_cb = NULL;
+	
+	UpdateWindow(w->handle);
+	
+	return w;
+}
+
+void gui_window_free(window w) {
+	if (windows == w)
+		windows = w->next;
+	else {
+		window n = windows;
+		while (n->next != w)
+			n = n->next;
+		n->next = w->next;
+	}
+	
+	DeleteObject(w->bitmap);
 	DestroyWindow(w->handle);
 	free(w);
 }
 
-
-void gui_window_draw (window win, unsigned char *data, 
-	uint32_t dx, uint32_t dy, uint32_t dw, uint32_t dh, 
-	uint32_t wx, uint32_t wy, uint32_t width, uint32_t height) 
-{
-
-	win->argb = data;
-
-	DeleteObject(win->map);
-	win->map = CreateBitmap(
-		(int) win->width,
-		(int) win->height,
-		1, 				// color planes
-		32, 			// Size of memory for one pixel in bits
-		win->argb 		// src
-	);
-
-	BeginPaint(win->handle, NULL);
-	window_draw_(win->handle, win->map, wx, wy, wx, wy, width, height);
-	EndPaint(win->handle, NULL);
+void gui_window_draw(window w, unsigned char *data, uint32_t dx, uint32_t dy, uint32_t dw, uint32_t dh, uint32_t wx, uint32_t wy, uint32_t width, uint32_t height) {
+	uint32_t *src = ((uint32_t *)data) + dw * dy + dx;
+	uint32_t *dest = ((uint32_t *)w->bgra) + w->bitmap_info.biWidth * wy + wx;
+	for (uint32_t h = height; h; h--, src += dw, dest += w->bitmap_info.biWidth)
+		memcpy(dest, src, 4 * width);
+	
+	RECT r;
+	r.left = wx;
+	r.top = wy;
+	r.right = wx + width;
+	r.bottom = wy + height;
+	RedrawWindow(w->handle, &r, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
 }
 
+void gui_window_resize(window w, uint32_t width, uint32_t height) {
+	SetWindowPos(w->handle, NULL, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER);
+}
 
 void *gui_window_get_handle(window w) {
 	return w->handle;
 }
 
-void gui_window_move(window w, uint32_t x, uint32_t y) {
-	SetWindowPos(w->handle, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-}
-
-void gui_window_resize(window w, uint32_t width, uint32_t height) {
-	w->width = width;
-	w->height = height;
-	w->map = NULL;
-	/*
-	w->argb = (unsigned char*) realloc(w->argb, 4 * w->width * w->height);
-	if (w->argb == NULL) {
-		MessageBox(NULL, "Resize memory error", "Error!", MB_ICONEXCLAMATION | MB_OK);
-		return;
-	}
-	*/
-	SetWindowPos(w->handle, NULL, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER);
-}
-
 uint32_t gui_window_get_width(window w) {
-	return w->width;
+	RECT r;
+	GetWindowRect(w->handle, &r);
+	return r.right - r.left;
 }
+
 uint32_t gui_window_get_height(window w) {
-	return w->height;
+	RECT r;
+	GetWindowRect(w->handle, &r);
+	return r.bottom - r.top;
 }
 
 void gui_window_show(window w) {
@@ -354,37 +297,27 @@ void gui_window_hide(window w) {
 	ShowWindow(w->handle, SW_HIDE);
 }
 
-void gui_run () {
-	keep_running = 1;
-	MSG Msg;
-	while(keep_running && GetMessage(&Msg, NULL, 0, 0) > 0)
-    {
-        TranslateMessage(&Msg);
-        DispatchMessage(&Msg);
-    }
+void gui_window_set_data(window w, void *data) {
+	w->data = data;
 }
 
-void gui_stop () {
-	keep_running = 0;
+void *gui_window_get_data(window w) {
+	return w->data;
 }
 
-
-void gui_set_timeout (window w, int32_t value) {
-	SetTimer(
-		w->handle,
-		(UINT_PTR) NULL,
-		(UINT) value,
-		gui_on_timeout
-	);
-}
-
-
-void gui_on_timeout (HWND unnamedParam1, UINT unnamedParam2, UINT_PTR unnamedParam3, DWORD unnamedParam4) {
-	window w = findWin(unnamedParam1);
-	if (w == NULL)
-		return;
-
-	asid_on_timeout(w->gui);
-}
-
+void gui_window_set_cb(window w, gui_cb_type type, gui_cb cb) {
+	switch (type) {
+	case GUI_CB_RESIZE:
+		w->resize_cb = cb;
+		break;
+	case GUI_CB_MOUSE_PRESS:
+		w->mouse_press_cb = cb;
+		break;
+	case GUI_CB_MOUSE_RELEASE:
+		w->mouse_release_cb = cb;
+		break;
+	case GUI_CB_MOUSE_MOVE:
+		w->mouse_move_cb = cb;
+		break;
+	}
 }

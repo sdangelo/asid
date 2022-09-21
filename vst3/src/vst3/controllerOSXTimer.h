@@ -14,28 +14,13 @@
  *
  * You should have received a copy of the GNU General Public License
  *
- * File author: Stefano D'Angelo
+ * File author: Paolo Marrone
  */
 
-#ifndef _ASID_H
-#define _ASID_H
+#ifndef _CONTROLLEROSXTIMER_H
+#define _CONTROLLEROSXTIMER_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct _asid* asid;
-
-asid asid_new();
-void asid_free(asid instance);
-void asid_set_sample_rate(asid instance, float sample_rate);
-void asid_reset(asid instance);
-void asid_process(asid instance, const float** x, float** y, int n_samples);
-void asid_set_parameter(asid instance, int index, float value);
-float asid_get_parameter(asid instance, int index);
-
-#ifdef __cplusplus
-}
-#endif
+void* COSXSet_timer(int ms, void* cb, void* data);
+void COSXRemove_timer(void* t);
 
 #endif

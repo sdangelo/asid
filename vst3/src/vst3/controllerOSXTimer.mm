@@ -14,28 +14,23 @@
  *
  * You should have received a copy of the GNU General Public License
  *
- * File author: Stefano D'Angelo
+ * File author: Paolo Marrone
  */
 
-#ifndef _ASID_H
-#define _ASID_H
+#include "controllerOSXTimer.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#import <Cocoa/Cocoa.h>
 
-typedef struct _asid* asid;
-
-asid asid_new();
-void asid_free(asid instance);
-void asid_set_sample_rate(asid instance, float sample_rate);
-void asid_reset(asid instance);
-void asid_process(asid instance, const float** x, float** y, int n_samples);
-void asid_set_parameter(asid instance, int index, float value);
-float asid_get_parameter(asid instance, int index);
-
-#ifdef __cplusplus
+void* COSXSet_timer(int ms, void* cb, void* data) {
+	NSTimer* t = [NSTimer timerWithTimeInterval:ms*0.001f repeats:YES block:^(NSTimer * _Nonnull timer) {
+		((void(*) (void*)) cb)(data);
+	}];
+	[[NSRunLoop currentRunLoop] addTimer:t forMode:NSRunLoopCommonModes];
+	return (void*) t;
 }
-#endif
 
-#endif
+void COSXRemove_timer(void* t) {
+	if (t) {
+		[(NSTimer*)t invalidate];
+	}
+}

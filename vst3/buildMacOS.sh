@@ -7,13 +7,13 @@ rm -rf build
 mkdir -p build
 cp -R asid.vst3 build
 
-mkdir -p build/asid.vst3/Contents/x86_64-win
+mkdir -p build/asid.vst3/Contents/MacOS
 
-# to fix: linuxmain should not be compiled here!
-g++ \
+SOURCES="
 	src/vst3/entry.cpp \
 	src/vst3/plugin.cpp \
-	src/vst3/controllerWin.cpp \
+	src/vst3/controllerOSX.cpp \
+	src/vst3/controllerOSXTimer.mm \
 	$VST_SDK_DIR/vst3sdk/base/source/fobject.cpp \
 	$VST_SDK_DIR/vst3sdk/base/source/baseiids.cpp \
 	$VST_SDK_DIR/vst3sdk/base/source/fstreamer.cpp \
@@ -22,7 +22,6 @@ g++ \
 	$VST_SDK_DIR/vst3sdk/pluginterfaces/base/funknown.cpp \
 	$VST_SDK_DIR/vst3sdk/pluginterfaces/base/ustring.cpp \
 	$VST_SDK_DIR/vst3sdk/pluginterfaces/base/conststringtable.cpp \
-	$VST_SDK_DIR/vst3sdk/public.sdk/source/main/linuxmain.cpp \
 	$VST_SDK_DIR/vst3sdk/public.sdk/source/main/pluginfactory.cpp \
 	$VST_SDK_DIR/vst3sdk/public.sdk/source/main/moduleinit.cpp \
 	$VST_SDK_DIR/vst3sdk/public.sdk/source/common/commoniids.cpp \
@@ -38,21 +37,37 @@ g++ \
 	$VST_SDK_DIR/vst3sdk/base/source/updatehandler.cpp \
 	$VST_SDK_DIR/vst3sdk/base/thread/source/flock.cpp \
 	$VST_SDK_DIR/vst3sdk/base/source/fbuffer.cpp \
-	\
+	$VST_SDK_DIR/vst3sdk/public.sdk/source/main/macmain.cpp \
 	../src/asid.c \
 	../src/mos_8580_filter.c \
 	src/asid_gui.c \
-	src/gui-win32.c \
+	src/gui-cocoa.mm \
+"
+
+CFLAGS="
+	-framework Cocoa \
+	-std=c++11 \
 	\
-	-DRELEASE=1 \
+	-DDEVELOPMENT=1 \
 	-I../src \
 	-Isrc \
 	-I$VST_SDK_DIR/vst3sdk/ \
-	-lole32 \
 	-fPIC -shared \
-	-mwindows \
-	-static \
-	-static-libgcc \
-	-static-libstdc++ \
-	-o build/asid.vst3/Contents/x86_64-win/asid.vst3 \
-	-O3
+	-ldl \
+	-rdynamic \
+	-o build/asid.vst3/Contents/MacOS/asid \
+	-DRELEASE=1 \
+	-O3 \
+	-ffast-math
+"
+
+clang++ $SOURCES $CFLAGS -arch x86_64 -o build/asid.vst3/Contents/MacOS/asid-x86_64
+clang++ $SOURCES $CFLAGS -arch arm64 -o build/asid.vst3/Contents/MacOS/asid-arm64
+
+lipo -create -output build/asid.vst3/Contents/MacOS/asid build/asid.vst3/Contents/MacOS/asid-x86_64 build/asid.vst3/Contents/MacOS/asid-arm64
+rm build/asid.vst3/Contents/MacOS/asid-x86_64 build/asid.vst3/Contents/MacOS/asid-arm64
+
+# -lobjc -Wno-import 
+
+# Should solve some signature problem (for Ableton Live e.g.)
+# sudo xattr -rd com.apple.quarantine build/asid.vst3

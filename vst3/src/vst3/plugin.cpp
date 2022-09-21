@@ -15,8 +15,30 @@
  * You should have received a copy of the GNU General Public License
  *
  * File author: Stefano D'Angelo, Paolo Marrone
+ *
+ * This file contains code from sse2neon (https://github.com/DLTcollab/sse2neon/),
+ * which is released under the following licensing conditions.
+ *
+ * sse2neon is freely redistributable under the MIT License.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
-
 
 #include "plugin.h"
 
@@ -26,8 +48,96 @@
 
 #include <algorithm>
 
+#if defined(__aarch64__)
+
+/* Beginning of sse2neon code */
+
+/* Denormals are zeros mode macros. */
+#define _MM_DENORMALS_ZERO_MASK 0x0040
+#define _MM_DENORMALS_ZERO_ON 0x0040
+#define _MM_DENORMALS_ZERO_OFF 0x0000
+
+#define _MM_GET_DENORMALS_ZERO_MODE _sse2neon_mm_get_denormals_zero_mode
+#define _MM_SET_DENORMALS_ZERO_MODE _sse2neon_mm_set_denormals_zero_mode
+
+/* Flush zero mode macros. */
+#define _MM_FLUSH_ZERO_MASK 0x8000
+#define _MM_FLUSH_ZERO_ON 0x8000
+#define _MM_FLUSH_ZERO_OFF 0x0000
+
+#define _MM_GET_FLUSH_ZERO_MODE _sse2neon_mm_get_flush_zero_mode
+#define _MM_SET_FLUSH_ZERO_MODE _sse2neon_mm_set_flush_zero_mode
+
+typedef struct {
+    uint16_t res0;
+    uint8_t res1 : 6;
+    uint8_t bit22 : 1;
+    uint8_t bit23 : 1;
+    uint8_t bit24 : 1;
+    uint8_t res2 : 7;
+    uint32_t res3;
+} fpcr_bitfield;
+
+static inline unsigned int _sse2neon_mm_get_denormals_zero_mode()
+{
+    union {
+        fpcr_bitfield field;
+        uint64_t value;
+    } r;
+
+    __asm__ __volatile__("mrs %0, FPCR" : "=r"(r.value));
+
+    return r.field.bit24 ? _MM_DENORMALS_ZERO_ON : _MM_DENORMALS_ZERO_OFF;
+}
+
+static inline void _sse2neon_mm_set_denormals_zero_mode(unsigned int flag)
+{
+    union {
+        fpcr_bitfield field;
+        uint64_t value;
+    } r;
+
+    __asm__ __volatile__("mrs %0, FPCR" : "=r"(r.value));
+
+    r.field.bit24 = (flag & _MM_DENORMALS_ZERO_MASK) == _MM_DENORMALS_ZERO_ON;
+
+    __asm__ __volatile__("msr FPCR, %0" ::"r"(r));
+}
+
+static inline unsigned int _sse2neon_mm_get_flush_zero_mode()
+{
+    union {
+        fpcr_bitfield field;
+        uint64_t value;
+    } r;
+
+    __asm__ __volatile__("mrs %0, FPCR" : "=r"(r.value));
+
+    return r.field.bit24 ? _MM_FLUSH_ZERO_ON : _MM_FLUSH_ZERO_OFF;
+}
+
+static inline void _sse2neon_mm_set_flush_zero_mode(unsigned int flag)
+{
+    union {
+        fpcr_bitfield field;
+        uint64_t value;
+    } r;
+
+    __asm__ __volatile__("mrs %0, FPCR" : "=r"(r.value));
+
+    r.field.bit24 = (flag & _MM_FLUSH_ZERO_MASK) == _MM_FLUSH_ZERO_ON;
+
+    __asm__ __volatile__("msr FPCR, %0" ::"r"(r)); 
+}
+
+/* End of sse2neon code */
+
+#else
+
 #include <xmmintrin.h>
 #include <pmmintrin.h>
+
+#endif
 
 Plugin::Plugin() {
 	setControllerClass(FUID(CTRL_GUID_1, CTRL_GUID_2, CTRL_GUID_3, CTRL_GUID_4));
@@ -132,28 +242,51 @@ tresult PLUGIN_API Plugin::process(ProcessData &data) {
 			outputs[k] = data.outputs[i].channelBuffers32[j];
 	for (; k < NUM_CHANNELS_OUT; k++)
 		outputs[k] = nullptr;
-	
+
+	#if defined(__aarch64__)
+
+	const unsigned int flush_zero_mode = _MM_GET_FLUSH_ZERO_MODE();
+	const unsigned int denormals_zero_mode = _MM_GET_DENORMALS_ZERO_MODE();
+
+	_MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+	_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+
+	#else
+
 	const int flush_zero_mode = _MM_GET_FLUSH_ZERO_MODE();
 	const char denormals_zero_mode = _MM_GET_DENORMALS_ZERO_MODE();
 
 	_MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
 	_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 
+	#endif
+
 	P_PROCESS(instance, inputs, outputs, data.numSamples);
-	
+
+	#if defined(__aarch64__)
+
 	_MM_SET_FLUSH_ZERO_MODE(flush_zero_mode);
 	_MM_SET_DENORMALS_ZERO_MODE(denormals_zero_mode);
 
-	// Send cutoff value to host
-	IParameterChanges* outParamChanges = data.outputParameterChanges;
-	if (outParamChanges) {
-		float cutoffValue = asid_get_cutoff_modulated(instance);
-		int32 index = 0;
-		IParamValueQueue* paramQueue = outParamChanges->addParameterData (3, index);
-		if (paramQueue)
-		{
-			int32 index2 = 0;
-			paramQueue->addPoint (0, cutoffValue, index2);
+	#else
+
+	_MM_SET_FLUSH_ZERO_MODE(flush_zero_mode);
+	_MM_SET_DENORMALS_ZERO_MODE(denormals_zero_mode);
+	
+	#endif
+
+	for (int i = 0; i < NUM_PARAMETERS; i++) {
+		if (!config_parameters[i].out)
+			continue;
+		float v = P_GET_PARAMETER(instance, i);
+		if (parameters[i] == v)
+			continue;
+		parameters[i] = v;
+		if (data.outputParameterChanges) {
+			int32 index;
+			IParamValueQueue* paramQueue = data.outputParameterChanges->addParameterData(i, index);
+			if (paramQueue)
+				paramQueue->addPoint(0, v, index);
 		}
 	}
 
@@ -186,6 +319,8 @@ tresult PLUGIN_API Plugin::setState(IBStream *state) {
 
 	float f;
 	for (int i = 0; i < NUM_PARAMETERS; i++) {
+		if (config_parameters[i].out)
+			continue;
 		if (streamer.readFloat(f) == false)
 			return kResultFalse;
 		parameters[i] = f;
@@ -199,7 +334,8 @@ tresult PLUGIN_API Plugin::getState(IBStream *state) {
 	IBStreamer streamer(state, kLittleEndian);
 
 	for (int i = 0; i < NUM_PARAMETERS; i++)
-		streamer.writeFloat(parameters[i]);
+		if (!config_parameters[i].out)
+			streamer.writeFloat(parameters[i]);
 
 	return kResultTrue;
 }

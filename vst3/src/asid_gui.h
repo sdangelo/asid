@@ -17,49 +17,37 @@
  * File authors: Stefano D'Angelo, Paolo Marrone
  */
 
-
 #ifndef _ASID_GUI_H
 #define _ASID_GUI_H
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <stdint.h>
-
 typedef struct _asid_gui* asid_gui;
+typedef struct _asid_gui_view* asid_gui_view;
 
-#ifdef _WIN32
-
-#include "gui-win32.h"
-
-#endif
-
-#ifdef linux
-
-#include "gui-x.h"
-
-#endif
-
-asid_gui asid_gui_new(void *handle);
+asid_gui asid_gui_new(
+	float (*get_parameter)(asid_gui gui, uint32_t id),
+	void (*set_parameter)(asid_gui gui, uint32_t id, float value),
+	void *data
+);
 void asid_gui_free(asid_gui gui);
-void asid_gui_set_set_parameter(asid_gui gui, void (*set_parameter)(void *handle, uint32_t id, float value));
+void asid_gui_process_events(asid_gui gui);
+uint32_t asid_gui_get_default_width(asid_gui gui);
+uint32_t asid_gui_get_default_height(asid_gui gui);
+void *asid_gui_get_data(asid_gui gui);
 void asid_gui_on_param_set(asid_gui gui, uint32_t id, float value);
 
-typedef window asid_gui_view;
-
 asid_gui_view asid_gui_view_new(asid_gui gui, void *parent);
-void asid_gui_view_free(asid_gui gui, asid_gui_view view);
-uint32_t asid_gui_view_get_width(asid_gui gui, asid_gui_view view);
-uint32_t asid_gui_view_get_height(asid_gui gui, asid_gui_view view);
-void asid_gui_view_resize(asid_gui gui, asid_gui_view view, uint32_t width, uint32_t height);
-uint32_t asid_gui_view_get_default_width(asid_gui gui);
-uint32_t asid_gui_view_get_default_height(asid_gui gui);
-
-void asid_on_mouse_press (asid_gui gui, int x, int y);
-void asid_on_mouse_release (asid_gui gui);
-void asid_on_mouse_move (asid_gui gui, int x, int y, uint32_t mouseState);
-void asid_on_timeout (asid_gui gui);
+void asid_gui_view_free(asid_gui_view view);
+void asid_gui_view_resize_window(asid_gui_view view, uint32_t width, uint32_t height);
+void *asid_gui_view_get_handle(asid_gui_view view);
+uint32_t asid_gui_view_get_width(asid_gui_view view);
+uint32_t asid_gui_view_get_height(asid_gui_view view);
+void asid_gui_view_on_timeout(asid_gui_view view);
 
 #ifdef __cplusplus
 }

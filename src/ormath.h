@@ -49,11 +49,11 @@
 #ifndef _ORMATH_H
 #define _ORMATH_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
 
 typedef union {
 	float f;
@@ -116,7 +116,6 @@ static inline float ormath_clipf(float x, float m, float M) {
 
 static inline float ormath_truncf(float x) {
 	ormath_floatint v = {.f = x};
-	v.f = x;
 	int32_t ex = (v.i & 0x7f800000) >> 23;
 	int32_t m = (~0) << ormath_clipi32(150 - ex, 0, 23);
 	m &= ormath_signexti32(126 - ex) | 0x80000000;

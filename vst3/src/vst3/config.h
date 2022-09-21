@@ -49,8 +49,8 @@ struct config_parameter {
 #define COMPANY_WEBSITE		"https://www.orastron.com/"
 #define COMPANY_MAILTO		"mailto:info@orastron.com"
 
-#define PLUGIN_NAME			"ASID"
-#define PLUGIN_VERSION		"1.0.0"
+#define PLUGIN_NAME		"A-SID"
+#define PLUGIN_VERSION		"1.0.1"
 #define PLUGIN_SUBCATEGORY	"Fx|Filter"
 
 #define PLUGIN_GUID_1		0x83AB6110
@@ -79,10 +79,10 @@ static struct config_io_bus config_buses_out[NUM_BUSES_OUT] = {
 #define NUM_PARAMETERS	4
 
 static struct config_parameter config_parameters[NUM_PARAMETERS] = {
-	{ "Cutoff", "Ctff", "", 0, 0, 0, 1.f },
-	{ "LFO Amount", "LFO amt", "%", 0, 0, 0, 0.f },
-	{ "LFO Speed", "LFO sp", "", 0, 0, 0, 0.5f },
-	{ "cutoffOut", "cout", "", 1, 0, 0, 0.f },
+	{ "Cutoff", "Cutoff", "", 0, 0, 0, 1.f },
+	{ "LFO Amount", "LFO Amt", "%", 0, 0, 0, 0.f },
+	{ "LFO Speed", "LFO Speed", "", 0, 0, 0, 0.5f },
+	{ "Modulate Cutoff", "Mod Cutoff", "", 1, 0, 0, 0.f },
 };
 
 // Internal API
@@ -92,27 +92,30 @@ static struct config_parameter config_parameters[NUM_PARAMETERS] = {
 #define P_TYPE				asid
 #define P_NEW				asid_new
 #define P_FREE				asid_free
-#define P_SET_SAMPLE_RATE	asid_set_sample_rate
+#define P_SET_SAMPLE_RATE		asid_set_sample_rate
 #define P_RESET				asid_reset
 #define P_PROCESS			asid_process
-#define P_SET_PARAMETER		asid_set_parameter
+#define P_SET_PARAMETER			asid_set_parameter
+#define P_GET_PARAMETER			asid_get_parameter
 
 #include "asid_gui.h"
 
-#define PGUI_TYPE					asid_gui
-#define PGUI_NEW					asid_gui_new
-#define PGUI_FREE					asid_gui_free
-#define PGUI_PROCESS_EVENTS			asid_gui_process_events
-#define PGUI_SET_SET_PARAMETER		asid_gui_set_set_parameter
-#define PGUI_ON_PARAM_SET			asid_gui_on_param_set
+#define PGUI_TYPE			asid_gui
+#define PGUI_NEW			asid_gui_new
+#define PGUI_FREE			asid_gui_free
+#define PGUI_PROCESS_EVENTS		asid_gui_process_events
+#define PGUI_GET_DEFAULT_WIDTH		asid_gui_get_default_width
+#define PGUI_GET_DEFAULT_HEIGHT		asid_gui_get_default_height
+#define PGUI_GET_DATA			asid_gui_get_data
+#define PGUI_ON_PARAM_SET		asid_gui_on_param_set
 
-#define PGUIVIEW_TYPE				asid_gui_view
-#define PGUIVIEW_NEW				asid_gui_view_new
-#define PGUIVIEW_FREE				asid_gui_view_free
-#define PGUIVIEW_GET_WIDTH			asid_gui_view_get_width
-#define PGUIVIEW_GET_HEIGHT			asid_gui_view_get_height
-#define PGUIVIEW_RESIZE				asid_gui_view_resize
-#define PGUIVIEW_GET_DEFAULT_WIDTH	asid_gui_view_get_default_width
-#define PGUIVIEW_GET_DEFAULT_HEIGHT	asid_gui_view_get_default_height
+#define PGUIVIEW_TYPE			asid_gui_view
+#define PGUIVIEW_NEW			asid_gui_view_new
+#define PGUIVIEW_FREE			asid_gui_view_free
+#define PGUIVIEW_RESIZE_WINDOW		asid_gui_view_resize_window
+#define PGUIVIEW_GET_HANDLE		asid_gui_view_get_handle
+#define PGUIVIEW_GET_WIDTH		asid_gui_view_get_width
+#define PGUIVIEW_GET_HEIGHT		asid_gui_view_get_height
+#define PGUIVIEW_ON_TIMEOUT 		asid_gui_view_on_timeout
 
 #endif

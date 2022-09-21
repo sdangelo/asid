@@ -1,0 +1,10 @@
+ASID 1.0.1
+==========
+
+* reworked GUI OS layer;
+* added Linux/x86-64 and MacOS x86-64/arm64 support.
+
+ASID 1.0.0
+==========
+
+First release.
