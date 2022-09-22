@@ -50,7 +50,7 @@ struct config_parameter {
 #define COMPANY_MAILTO		"mailto:info@orastron.com"
 
 #define PLUGIN_NAME		"A-SID"
-#define PLUGIN_VERSION		"1.0.1"
+#define PLUGIN_VERSION		"1.0.2"
 #define PLUGIN_SUBCATEGORY	"Fx|Filter"
 
 #define PLUGIN_GUID_1		0x83AB6110

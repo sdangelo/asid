@@ -61,13 +61,12 @@ CFLAGS="
 	-ffast-math
 "
 
+# -lobjc -Wno-import 
+
 clang++ $SOURCES $CFLAGS -arch x86_64 -o build/asid.vst3/Contents/MacOS/asid-x86_64
 clang++ $SOURCES $CFLAGS -arch arm64 -o build/asid.vst3/Contents/MacOS/asid-arm64
 
 lipo -create -output build/asid.vst3/Contents/MacOS/asid build/asid.vst3/Contents/MacOS/asid-x86_64 build/asid.vst3/Contents/MacOS/asid-arm64
 rm build/asid.vst3/Contents/MacOS/asid-x86_64 build/asid.vst3/Contents/MacOS/asid-arm64
 
-# -lobjc -Wno-import 
-
-# Should solve some signature problem (for Ableton Live e.g.)
-# sudo xattr -rd com.apple.quarantine build/asid.vst3
+cp installMacOS installMacOSdo.sh build

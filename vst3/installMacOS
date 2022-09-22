@@ -1,0 +1,11 @@
+#!/bin/sh
+
+BASEDIR=$(dirname "$0")
+/usr/bin/osascript -e 'display dialog "I need root privileges to install Orastron A-SID. Should we continue?" buttons {"Do not install", "Proceed"} default button "Proceed" cancel button "Do not install" with title "Install Orastron A-SID"' || exit 1
+out=$(/usr/bin/osascript -e "do shell script \"$BASEDIR/installMacOSdo.sh 2>&1\" with prompt \"Install Orastron A-SID\" with administrator privileges" 2>&1)
+if [ $? -ne 0 ]; then
+	/usr/bin/osascript -e "display dialog \"Installation failed with the following error message: $out\" with title \"Install Orastron A-SID\" buttons {\"OK\"} default button \"OK\""
+	exit 1
+else
+	/usr/bin/osascript -e 'display dialog "Orastron A-SID succesfully installed. Enjoy!" with title "Install Orastron A-SID" buttons {"OK"} default button "OK"'
+fi

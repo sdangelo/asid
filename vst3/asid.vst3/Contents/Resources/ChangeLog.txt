@@ -1,8 +1,13 @@
+ASID 1.0.2
+==========
+
+Added MacOS installer.
+
 ASID 1.0.1
 ==========
 
-* reworked GUI OS layer;
-* added Linux/x86-64 and MacOS x86-64/arm64 support.
+* Reworked GUI OS layer.
+* Added Linux/x86-64 and MacOS x86-64/arm64 support.
 
 ASID 1.0.0
 ==========
