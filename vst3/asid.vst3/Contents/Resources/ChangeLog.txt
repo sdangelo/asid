@@ -1,3 +1,9 @@
+ASID 1.0.3
+==========
+
+* Implemented compatibility with Reaper and Bitwig Studio on Linux.
+* Fixed a bug in setting VST bus arrangements.
+
 ASID 1.0.2
 ==========
 

@@ -323,7 +323,8 @@ uint32_t gui_window_get_height(window w) {
 
 void gui_window_resize(window w, uint32_t width, uint32_t height) {
 	const uint32_t values[] = { width, height };
-	xcb_configure_window(w->g->connection, w->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, values);
+	xcb_configure_window(w->g->connection, w->window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, values);
+	xcb_clear_area(w->g->connection, 1, w->window, 0, 0, width, height);
 	xcb_flush(w->g->connection);
 }
 

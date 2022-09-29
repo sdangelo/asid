@@ -101,6 +101,11 @@ public:
 	tresult PLUGIN_API onSize(ViewRect *newSize) {
 		if (!pgui_view_created)
 			return kResultFalse;
+		if (newSize) {
+			int32 w = newSize->getWidth();
+			int32 h = newSize->getHeight();
+			PGUIVIEW_RESIZE_WINDOW(pgui_view, w, h);
+		}
 		return kResultTrue;
 	}
 

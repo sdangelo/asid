@@ -17,6 +17,9 @@ g++ \
 	$VST_SDK_DIR/vst3sdk/base/source/baseiids.cpp \
 	$VST_SDK_DIR/vst3sdk/base/source/fstreamer.cpp \
 	$VST_SDK_DIR/vst3sdk/base/source/fstring.cpp \
+	$VST_SDK_DIR/vst3sdk/base/source/fbuffer.cpp \
+	$VST_SDK_DIR/vst3sdk/base/source/updatehandler.cpp \
+	$VST_SDK_DIR/vst3sdk/base/thread/source/flock.cpp \
 	$VST_SDK_DIR/vst3sdk/pluginterfaces/base/coreiids.cpp \
 	$VST_SDK_DIR/vst3sdk/pluginterfaces/base/funknown.cpp \
 	$VST_SDK_DIR/vst3sdk/pluginterfaces/base/ustring.cpp \

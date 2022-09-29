@@ -301,11 +301,11 @@ tresult PLUGIN_API Plugin::setBusArrangements(SpeakerArrangement *inputs, int32 
 
 	for (int32 i = 0; i < numIns; i++)
 		if ((config_buses_in[i].configs == IO_MONO && inputs[i] != SpeakerArr::kMono)
-		    || inputs[i] != SpeakerArr::kStereo)
+		    || (config_buses_in[i].configs == IO_STEREO && inputs[i] != SpeakerArr::kStereo))
 			return kResultFalse;
 	for (int32 i = 0; i < numOuts; i++)
 		if ((config_buses_out[i].configs == IO_MONO && outputs[i] != SpeakerArr::kMono)
-		    || outputs[i] != SpeakerArr::kStereo)
+		    || (config_buses_out[i].configs == IO_STEREO && outputs[i] != SpeakerArr::kStereo))
 			return kResultFalse;
 
 	return kResultTrue;
