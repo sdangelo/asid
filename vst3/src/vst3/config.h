@@ -50,7 +50,7 @@ struct config_parameter {
 #define COMPANY_MAILTO		"mailto:info@orastron.com"
 
 #define PLUGIN_NAME		"A-SID"
-#define PLUGIN_VERSION		"1.0.2"
+#define PLUGIN_VERSION		"1.0.4"
 #define PLUGIN_SUBCATEGORY	"Fx|Filter"
 
 #define PLUGIN_GUID_1		0x83AB6110
@@ -82,7 +82,7 @@ static struct config_parameter config_parameters[NUM_PARAMETERS] = {
 	{ "Cutoff", "Cutoff", "", 0, 0, 0, 1.f },
 	{ "LFO Amount", "LFO Amt", "%", 0, 0, 0, 0.f },
 	{ "LFO Speed", "LFO Speed", "", 0, 0, 0, 0.5f },
-	{ "Modulate Cutoff", "Mod Cutoff", "", 1, 0, 0, 0.f },
+	{ "Modulated Cutoff", "Mod Cutoff", "", 1, 0, 0, 0.f },
 };
 
 // Internal API

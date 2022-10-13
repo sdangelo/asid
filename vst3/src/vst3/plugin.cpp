@@ -132,10 +132,14 @@ static inline void _sse2neon_mm_set_flush_zero_mode(unsigned int flag)
 
 /* End of sse2neon code */
 
-#else
+#elif defined(__i386__) || defined(__x86_64__)
 
 #include <xmmintrin.h>
 #include <pmmintrin.h>
+
+#else
+
+#define NO_DAZ_FTZ
 
 #endif
 
@@ -243,37 +247,20 @@ tresult PLUGIN_API Plugin::process(ProcessData &data) {
 	for (; k < NUM_CHANNELS_OUT; k++)
 		outputs[k] = nullptr;
 
-	#if defined(__aarch64__)
-
+#ifndef NO_DAZ_FTZ
 	const unsigned int flush_zero_mode = _MM_GET_FLUSH_ZERO_MODE();
 	const unsigned int denormals_zero_mode = _MM_GET_DENORMALS_ZERO_MODE();
 
 	_MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
 	_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
-
-	#else
-
-	const int flush_zero_mode = _MM_GET_FLUSH_ZERO_MODE();
-	const char denormals_zero_mode = _MM_GET_DENORMALS_ZERO_MODE();
-
-	_MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
-	_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
-
-	#endif
+#endif
 
 	P_PROCESS(instance, inputs, outputs, data.numSamples);
 
-	#if defined(__aarch64__)
-
+#ifndef NO_DAZ_FTZ
 	_MM_SET_FLUSH_ZERO_MODE(flush_zero_mode);
 	_MM_SET_DENORMALS_ZERO_MODE(denormals_zero_mode);
-
-	#else
-
-	_MM_SET_FLUSH_ZERO_MODE(flush_zero_mode);
-	_MM_SET_DENORMALS_ZERO_MODE(denormals_zero_mode);
-	
-	#endif
+#endif
 
 	for (int i = 0; i < NUM_PARAMETERS; i++) {
 		if (!config_parameters[i].out)

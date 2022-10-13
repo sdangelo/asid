@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>ASID</string>
+    <string>A-SID</string>
 
     <key>CFBundleExecutable</key>
     <string>asid</string>

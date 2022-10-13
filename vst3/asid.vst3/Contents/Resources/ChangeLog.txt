@@ -1,21 +1,28 @@
-ASID 1.0.3
-==========
+A-SID 1.0.4
+===========
+
+* Improved compatbiility with latest MacOS versions.
+* Fixed a couple of potential bugs.
+* A few hard-to-notice cosmetic changes.
+
+A-SID 1.0.3
+===========
 
 * Implemented compatibility with Reaper and Bitwig Studio on Linux.
 * Fixed a bug in setting VST bus arrangements.
 
-ASID 1.0.2
-==========
+A-SID 1.0.2
+===========
 
 Added MacOS installer.
 
-ASID 1.0.1
-==========
+A-SID 1.0.1
+===========
 
 * Reworked GUI OS layer.
 * Added Linux/x86-64 and MacOS x86-64/arm64 support.
 
-ASID 1.0.0
-==========
+A-SID 1.0.0
+===========
 
 First release.

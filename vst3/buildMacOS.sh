@@ -5,7 +5,7 @@ VST_SDK_DIR=../../VST_SDK
 rm -rf build
 
 mkdir -p build
-cp -R asid.vst3 build
+cp -R asid.vst3/Contents build
 
 mkdir -p build/asid.vst3/Contents/MacOS
 
@@ -48,13 +48,10 @@ CFLAGS="
 	-framework Cocoa \
 	-std=c++11 \
 	\
-	-DDEVELOPMENT=1 \
 	-I../src \
 	-Isrc \
 	-I$VST_SDK_DIR/vst3sdk/ \
 	-fPIC -shared \
-	-ldl \
-	-rdynamic \
 	-o build/asid.vst3/Contents/MacOS/asid \
 	-DRELEASE=1 \
 	-O3 \
@@ -68,5 +65,3 @@ clang++ $SOURCES $CFLAGS -arch arm64 -o build/asid.vst3/Contents/MacOS/asid-arm6
 
 lipo -create -output build/asid.vst3/Contents/MacOS/asid build/asid.vst3/Contents/MacOS/asid-x86_64 build/asid.vst3/Contents/MacOS/asid-arm64
 rm build/asid.vst3/Contents/MacOS/asid-x86_64 build/asid.vst3/Contents/MacOS/asid-arm64
-
-cp installMacOS installMacOSdo.sh build

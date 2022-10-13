@@ -4,8 +4,8 @@ VST_SDK_DIR=../../VST_SDK
 
 rm -rf build
 
-mkdir -p build
-cp -R asid.vst3 build
+mkdir -p build/asid.vst3/Contents
+cp -R asid.vst3/Contents/Resources build/asid.vst3/Contents
 
 mkdir -p build/asid.vst3/Contents/x86_64-linux
 
@@ -47,7 +47,11 @@ g++ \
 	-Isrc \
 	-I$VST_SDK_DIR/vst3sdk/ \
 	-fPIC -shared \
-	-static-libgcc \
-	-static-libstdc++ \
+	-lxcb \
 	-o build/asid.vst3/Contents/x86_64-linux/asid.so \
-	-O3
+	-O3 \
+	-ffast-math
+	
+# for a more static build we probably need
+# -static-libgcc -static-libstdc++ -l:library.a...
+# with static libraries built with -fPIC

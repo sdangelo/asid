@@ -4,8 +4,9 @@ VST_SDK_DIR=../../VST_SDK
 
 rm -rf build
 
-mkdir -p build
-cp -R asid.vst3 build
+mkdir -p build/asid.vst3/Contents
+cp asid.vst3/desktop.ini asid.vst3/Plugin.ico build/asid.vst3
+cp -R asid.vst3/Contents/Resources build/asid.vst3/Contents
 
 mkdir -p build/asid.vst3/Contents/x86_64-win
 
@@ -55,4 +56,5 @@ g++ \
 	-static-libgcc \
 	-static-libstdc++ \
 	-o build/asid.vst3/Contents/x86_64-win/asid.vst3 \
-	-O3
+	-O3 \
+	-ffast-math

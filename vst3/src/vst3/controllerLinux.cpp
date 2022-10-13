@@ -136,11 +136,15 @@ static void setParameterCb(PGUI_TYPE gui, uint32_t id, float value) {
 }
 
 tresult PLUGIN_API Controller::initialize(FUnknown *context) {
-	pgui = PGUI_NEW(getParameterCb, setParameterCb, this);
-	if (pgui == nullptr)
-		return kResultFalse;
-
 	tresult r = EditController::initialize(context);
+	if (r != kResultTrue)
+		return r;
+
+	pgui = PGUI_NEW(getParameterCb, setParameterCb, this);
+	if (pgui == nullptr) {
+		EditController::terminate();
+		return kResultFalse;
+	}
 
 	// add parameters
 	for (int i = 0; i < NUM_PARAMETERS; i++)
