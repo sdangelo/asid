@@ -1,0 +1,89 @@
+{
+	"product": {
+		"name":	"A-SID",
+		"version": "2.0.0",
+		"buildVersion": "1",
+		"bundleName": "asid",
+		"buses": [
+			{
+				"type":	"audio",
+				"direction": "input",
+				"channels": "mono",
+				"name": "Input",
+				"shortName": "Input"
+			},
+			{
+				"type": "audio",
+				"direction": "output",
+				"channels": "mono",
+				"name": "Output",
+				"shortName": "Output"
+			}
+		],
+		"parameters": [
+			{
+				"name": "Cutoff",
+				"shortName": "Cutoff",
+				"direction": "input",
+				"defaultValue": 100.0,
+				"minimum": 0.0,
+				"maximum": 100.0,
+				"unit": "pc",
+				"map": "linear"
+			},
+			{
+				"name": "LFO Amount",
+				"shortName": "LFO Amount",
+				"direction": "input",
+				"defaultValue": 0.0,
+				"minimum": 0.0,
+				"maximum": 100.0,
+				"unit": "pc",
+				"map": "linear"
+			},
+			{
+				"name": "LFO Speed",
+				"shortName": "LFO Speed",
+				"direction": "input",
+				"defaultValue": 0.0,
+				"minimum": 0.0,
+				"maximum": 100.0,
+				"unit": "pc",
+				"map": "linear"
+			},
+			{
+				"name": "Bypass",
+				"shortName": "Bypass",
+				"direction": "input",
+				"isBypass": true,
+				"defaultValue": 0,
+				"minimum": 0,
+				"maximum": 1,
+				"toggled": true,
+				"optional": true,
+				"integer": true,
+				"scalePoints": {
+					"Off": 0,
+					"On": 1
+				},
+				"list": true,
+				"unit": "",
+				"map": "linear"
+			},
+			{
+				"name": "Modulated Cutoff",
+				"shortName": "Mod Cutoff",
+				"direction": "output",
+				"defaultValue": 0.0,
+				"minimum": 0.0,
+				"maximum": 100.0,
+				"unit": "pc",
+				"map": "linear"
+			}
+		],
+		"ui": {
+			"userResizable": true,
+			"selfResizable": false
+		}
+	}
+}

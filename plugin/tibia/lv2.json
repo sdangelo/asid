@@ -1,0 +1,15 @@
+{
+	"lv2": {
+		"prefixes": {
+			"orastron": "https://www.orastron.com/"
+		},
+		"uri": "@orastron:asid",
+		"types": [ "@lv2:FilterPlugin" ],
+		"version": "2.0",
+		"busSymbols": [ "input", "output" ],
+		"parameterSymbols": [ "cutoff", "lfo_amount", "lfo_speed", "bypass", "mod_cutoff" ],
+		"ui": {
+			"uri": "@orastron:asid_ui"
+		}
+	}
+}
