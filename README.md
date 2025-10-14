@@ -1,6 +1,3 @@
-> [!WARNING]
-> This repository is archived. Development continues at: https://git.orastron.com/orastron/asid. See you there.
-
 # A-SID
 
 Turn your C64 into a wah effect.
